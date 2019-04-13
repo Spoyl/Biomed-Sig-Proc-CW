@@ -20,40 +20,76 @@ FILENAME = "eeg.mat"
 CATEGORY = "calibrated_sig"
 N = 256
 NPERSEG = 250
+FC1 = 8
+FC2 = 13
 
 
-def mean_power(sig_dat1, sig_dat2, N, O1_filt, O2_filt):
+def power_spec(O1, O2, N, O1_filt, O2_filt, fc1, fc2):
+    """
+    Qbiii
+    Plot the power spectra of a signal and its filtered counterpart.
+    Also calculates the area within a frequency band
+    """
+    
+    upper = int(N/2)
+    
+    ps1=(np.abs(np.fft.fft(O1, N)))**2
+    ps2=(np.abs(np.fft.fft(O2, N)))**2
+    ps3=(np.abs(np.fft.fft(O1_filt, N)))**2
+    ps4=(np.abs(np.fft.fft(O2_filt, N)))**2
+    
+    freq=np.fft.fftfreq(N, 1./256.)     # create frequency range for x axis
+    
+    intgO1_filt = np.trapz(ps3[8:13], freq[8:13])
+    print(intgO1_filt)
     
     plt.figure(figsize=(16, 6))
+    plt.semilogy(freq[1:upper], ps1[1:upper], label="Unfiltered")
+    plt.semilogy(freq[1:upper], ps3[1:upper], label="Filtered")
+    plt.xlabel("Frequency, Hz")
+    plt.ylabel("Voltage, $\mu V^2 / Hz$")
+    plt.title("Power Spectrum of O1 Signal")
+    plt.legend()
+    plt.grid()
+    
+    plt.figure(figsize=(16, 6))
+    plt.semilogy(freq[1:upper], ps2[1:upper], label="Unfiltered")
+    plt.semilogy(freq[1:upper], ps4[1:upper], label="Filtered")
+    plt.xlabel("Frequency, Hz")
+    plt.ylabel("Voltage, $\mu V^2 / Hz$")
+    plt.title("Power Spectrum of O2 Signal")
+    plt.legend()
+    plt.grid()
+    
+    return intgO1_filt
+    
 
-    A=np.fft.fft(sig_dat1, N)
-    amp1=np.abs(A)
-    ps1=amp1**2
-    pMean1=np.mean(ps1)
+def mean_power(sig_dat1, sig_dat2, N, O1_filt, O2_filt):
+    """
+    Qbii
+    Find the mean squared power (MSP) for each set of signals.
     
-    B=np.fft.fft(sig_dat2, N)
-    amp2=np.abs(B)
-    ps2=amp2**2
+    Returns:
+        pmean1 (float): MSP O1
+        pmean2 (float): MSP O2
+        pmean1_filt (float): MSP O1_filtered
+        pmean2_filt (float): MSP O2_filtered
+    """
+    
+    ps1=(np.abs(np.fft.fft(sig_dat1, N)))**2    #calculate power spectra
+    ps2=(np.abs(np.fft.fft(sig_dat2, N)))**2
+    ps3=(np.abs(np.fft.fft(O1_filt, N)))**2
+    ps4=(np.abs(np.fft.fft(O2_filt, N)))**2
+    
+    pMean1=np.mean(ps1)                         #find mean
     pMean2=np.mean(ps2)
-    
-    C=np.fft.fft(O1_filt, N)
-    amp3=np.abs(C)
-    ps3=amp3**2
     pMean1_filt=np.mean(ps3)
-    
-    D=np.fft.fft(O2_filt, N)
-    amp4=np.abs(D)
-    ps4=amp4**2
     pMean2_filt=np.mean(ps4)
     
-    print("Mean power of the unfiltered signal:")
-    print("O1\t\tO2")
+    print("Mean power of the unfiltered signal:\nO1\t\tO2")
     print(str(round(pMean1, 0))+"\t"+str(round(pMean2, 0)))
-    print()
-    print("Mean power of the filtered signal:")
-    print("O1\t\tO2")
+    print("\nMean power of the filtered signal:\nO1\t\tO2")
     print(str(round(pMean1_filt, 0))+"\t\t"+str(round(pMean2_filt, 0)))
-    print()
     
     return pMean1,pMean2,pMean1_filt,pMean2_filt
     
@@ -71,10 +107,11 @@ def apply_filter(b, a, t, O1, O2):
     O2_filt=signal.lfilter(b,a,O2)
     
     plt.figure(figsize = (16, 6))
-    plt.plot(t, O1_filt)
-    plt.plot(t, O2_filt)
+    plt.plot(t[0:300], O1_filt[0:300], label="O1")
+    plt.plot(t[0:300], O2_filt[0:300], label="O2")
     plt.xlabel("Time, sec")
     plt.ylabel("Voltage, $\mu V^2 / Hz$")
+    plt.legend()
     plt.grid()
     plt.show()
     
@@ -92,8 +129,7 @@ def cheby_band(fc1, fc2, fs, order=5):
     """
     
     fnyq=fs/2
-    
-    passband = [fc1/fnyq, fc2/fnyq]
+    passband = [fc1/fnyq, fc2/fnyq]     #numpy requires a normalized frequency for digital signals
     
     b,a=signal.cheby1(order, 1, passband, btype="band")
     w,h=signal.freqz(b,a)
@@ -123,12 +159,10 @@ def butter_band(fc1, fc2, fs, order=5):
     """
     
     fnyq=fs/2
+    passband = [fc1/fnyq, fc2/fnyq]     #numpy requires a normalized (?) frequency for digital signals
     
-    passband = [fc1/fnyq, fc2/fnyq]
-    
-    b,a = signal.butter(order,passband,btype='band') 
-
-    w,h=signal.freqz(b,a)
+    b,a = signal.butter(order,passband,btype='band')    #make filter
+    w,h=signal.freqz(b,a)   #find frequencies
     
     plt.figure(figsize=(10,6))
     plt.semilogx((fs*0.5/np.pi)*w, abs(h), label=str(order))
@@ -165,6 +199,10 @@ def getData(filename, category):
 def rm_mean(O1, O2):
     """
     Remove the mean value from the signals
+    
+    Returns:
+        O1_no_mean (array): signal O1 - mean(O1)
+        O2_no_mean (array): signal O2 - mean(O2)
     """
     
     O2_no_mean = np.zeros(len(O2))
@@ -179,7 +217,7 @@ def rm_mean(O1, O2):
     for i, val in enumerate(O1):
         O1_no_mean[i] += (val-O1_mean) 
             
-    return (O1_no_mean, O2_no_mean)
+    return O1_no_mean, O2_no_mean
 
 
 def plot_sigs(O1, O2, t):
@@ -193,9 +231,7 @@ def plot_sigs(O1, O2, t):
     plt.grid()
     plt.xlabel("Time, sec")
     plt.ylabel("Voltage, $\mu V^2 / Hz$")
-    plt.show()
-    return 1
-    
+    plt.show()    
 
 
 def plot_psd(sig_dat1, sig_dat2, fs, nperseg = 250):
@@ -221,13 +257,12 @@ def plot_psd(sig_dat1, sig_dat2, fs, nperseg = 250):
     plt.title("Welch Power Spectral Density of Occipital Electrodes Using a Window of "+str(nperseg)+" Samples")
     plt.legend()
     plt.savefig("O2_O1_PSD_plot.png")
+    plt.show()    
     
     peak_f1=f[list(psd_O1).index(np.max(psd_O1))]
     peak_f2=f[list(psd_O2).index(np.max(psd_O2))]
     
-    plt.show()    
-    
-    return (peak_f1, peak_f2)
+    return peak_f1, peak_f2
 
 
 def plot_window(nperseg, N):
@@ -299,6 +334,7 @@ def main():
     O1, O2 = rm_mean(O1, O2)
     b,a=butter_band(8,13,fs)
     O1_filt,O2_filt=apply_filter(b,a,t,O1,O2)
+    power_spec(O1, O2, N, O1_filt, O2_filt, FC1, FC2)
     mean_power(O1, O2, N, O1_filt, O2_filt)
     
 
