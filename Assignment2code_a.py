@@ -11,7 +11,7 @@ import matplotlib.pyplot as plt
 import scipy.signal as signal
 from scipy.io import loadmat
 
-rcParams.update({'font.size': 12})
+rcParams.update({'font.size': 16})
 rcParams["font.family"]="Dejavu Serif"
 rcParams["mathtext.fontset"]="dejavuserif"
 
@@ -28,7 +28,7 @@ def power_spec(O1, O2, N, O1_filt, O2_filt, fc1, fc2):
     """
     Qbiii
     Plot the power spectra of a signal and its filtered counterpart.
-    Also calculates the area within a frequency band
+    Also calculates the area within a frequency band.
     """
     
     upper = int(N/2)
@@ -216,7 +216,8 @@ def rm_mean(O1, O2):
     
     for i, val in enumerate(O1):
         O1_no_mean[i] += (val-O1_mean) 
-            
+        
+    print(O1_mean, O2_mean)
     return O1_no_mean, O2_no_mean
 
 
@@ -225,12 +226,14 @@ def plot_sigs(O1, O2, t):
     Plots the signals as a time series.
     """
     
-    plt.figure(figsize = (16, 6))
-    plt.plot(t, O1, label="O1")
-    plt.plot(t, O2, label="O2")
+    plt.figure(figsize = (22, 6))
+    plt.plot(t[0:2000], O1[0:2000], label="O1")
+    plt.plot(t[0:2000], O2[0:2000], label="O2")
     plt.grid()
     plt.xlabel("Time, sec")
     plt.ylabel("Voltage, $\mu V^2 / Hz$")
+    plt.legend()
+    plt.savefig("signals8sec.png")
     plt.show()    
 
 
@@ -244,23 +247,36 @@ def plot_psd(sig_dat1, sig_dat2, fs, nperseg = 250):
         corresponding to the peak power
     """
     
-    f, psd_O1 = signal.welch(sig_dat1, fs, nperseg=nperseg, window = "hamming")
-    f, psd_O2 = signal.welch(sig_dat2, fs, nperseg=nperseg, window = "hamming")
+    f, psd_O1_han = signal.welch(sig_dat1, fs, nperseg=nperseg, window = "hanning")
+    f, psd_O2_han = signal.welch(sig_dat2, fs, nperseg=nperseg, window = "hanning")
+    f2, psd_O1_ham = signal.welch(sig_dat1, fs, nperseg=nperseg, window = "hamming")
+    f2, psd_O2_ham = signal.welch(sig_dat2, fs, nperseg=nperseg, window = "hamming")
     
-    plt.figure(figsize = (16, 6))
     
-    plt.semilogy(f, psd_O1, label="O1")
-    plt.semilogy(f, psd_O2, label="O2")
+    plt.figure(figsize = (16, 10))
+    plt.subplot(211)
+    plt.semilogy(f, psd_O1_han, label="O1")
+    plt.semilogy(f, psd_O2_han, label="O2")
     plt.grid()
-    plt.xlabel("Frequency, $\omega$")
+    #plt.xlabel("Frequency, $\omega$")
     plt.ylabel("Voltage, $\mu V^2 / Hz$")
     plt.title("Welch Power Spectral Density of Occipital Electrodes Using a Window of "+str(nperseg)+" Samples")
     plt.legend()
-    plt.savefig("O2_O1_PSD_plot.png")
-    plt.show()    
+    #plt.savefig("O2_O1_PSD_plot.png")
+    #plt.show()
     
-    peak_f1=f[list(psd_O1).index(np.max(psd_O1))]
-    peak_f2=f[list(psd_O2).index(np.max(psd_O2))]
+    plt.subplot(212)
+    plt.semilogy(f2, psd_O1_ham, label="O1")
+    plt.semilogy(f2, psd_O2_ham, label="O2")
+    plt.grid()
+    plt.xlabel("Frequency, $\omega$")
+    plt.ylabel("Voltage, $\mu V^2 / Hz$")
+    plt.legend()
+    plt.savefig("O2_O1_PSD_plot.png")
+    plt.show()
+    
+    peak_f1=f[list(psd_O1_han).index(np.max(psd_O1_han))]
+    peak_f2=f[list(psd_O2_han).index(np.max(psd_O2_han))]
     
     return peak_f1, peak_f2
 
@@ -332,12 +348,9 @@ def main():
 #    xf[0:int(fs)]=np.nan # set first second of data to (nan) - avoid start-up transients
     O1, O2, fs, t = getData(FILENAME, CATEGORY)
     O1, O2 = rm_mean(O1, O2)
-    b,a=butter_band(8,13,fs)
-    O1_filt,O2_filt=apply_filter(b,a,t,O1,O2)
-    power_spec(O1, O2, N, O1_filt, O2_filt, FC1, FC2)
-    mean_power(O1, O2, N, O1_filt, O2_filt)
-    
-
+#    b,a=butter_band(8,13,fs)
+#    O1_filt,O2_filt=apply_filter(b,a,t,O1,O2)
+    plot_psd(O1, O2, fs)
 
 if __name__ == "__main__":
     main()
