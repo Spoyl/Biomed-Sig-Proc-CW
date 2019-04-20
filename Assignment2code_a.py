@@ -342,12 +342,13 @@ def plot_amp_spec(sig_dat1, sig_dat2, N1, N2):
     upper2=int(N2/2)
     
     plt.figure(figsize=(16,5))  
-    plt.semilogy(freq[1:upper], amp1[1:upper])
-    plt.semilogy(freq[1:upper], amp2[1:upper])
+    plt.semilogy(freq[1:upper], amp1[1:upper],label="O1")
+    plt.semilogy(freq[1:upper], amp2[1:upper],label="O2")
     plt.grid()
     plt.xlabel("Frequency, $\omega$")
     plt.ylabel("Amplitude")
     plt.title("Amplitude Spectrum of Occipital ECGs")    
+    plt.legend()
     plt.savefig("ampspec.png")
     plt.show()
 
