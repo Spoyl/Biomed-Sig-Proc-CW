@@ -226,51 +226,62 @@ def plot_sigs(O1, O2, t):
     Plots the signals as a time series.
     """
     
-    plt.figure(figsize = (22, 6))
-    plt.plot(t[0:2000], O1[0:2000], label="O1")
-    plt.plot(t[0:2000], O2[0:2000], label="O2")
+    plt.figure(figsize = (12, 5))
+    plt.plot(t[0:1500], O1[0:1500], label="O1")
+    plt.plot(t[0:1500], O2[0:1500], label="O2")
     plt.grid()
     plt.xlabel("Time, sec")
-    plt.ylabel("Voltage, $\mu V^2 / Hz$")
+    plt.ylabel("Voltage, $\mu V$")
     plt.legend()
     plt.savefig("signals8sec.png")
     plt.show()    
 
 
-def plot_psd(sig_dat1, sig_dat2, fs, nperseg = 250):
+def plot_psd(sig_dat1, sig_dat2, fs, nperseg=256):
     """
-    Plots the power spectral density of two datasets and the corresponding
-    window used to calculate the spectrum (Hanning).
+    Plots the power spectral density of two datasets.
     
     Returns:
         (peak_f1, peak_f2): (tuple of floats) The frequencies 
         corresponding to the peak power
     """
+    bar_noverlap = nperseg*0.66
     
     f, psd_O1_han = signal.welch(sig_dat1, fs, nperseg=nperseg, window = "hanning")
     f, psd_O2_han = signal.welch(sig_dat2, fs, nperseg=nperseg, window = "hanning")
-    f2, psd_O1_ham = signal.welch(sig_dat1, fs, nperseg=nperseg, window = "hamming")
-    f2, psd_O2_ham = signal.welch(sig_dat2, fs, nperseg=nperseg, window = "hamming")
+    f2, psd_O1_ham = signal.welch(sig_dat1, fs, nperseg=nperseg, window="hamming")
+    f2, psd_O2_ham = signal.welch(sig_dat2, fs, nperseg=nperseg, window="hanning")
+    f3, psd_O1_bar = signal.welch(sig_dat1, fs, nperseg=nperseg, window="bartlett", noverlap=bar_noverlap)
+    f3, psd_O2_bar = signal.welch(sig_dat2, fs, nperseg=nperseg, window="bartlett", noverlap=bar_noverlap)
+
+#    f2, psd_O1_ham = signal.welch(sig_dat1, fs, nperseg=nperseg, window = "hamming")
+#    f2, psd_O2_ham = signal.welch(sig_dat2, fs, nperseg=nperseg, window = "hamming")
     
-    
-    plt.figure(figsize = (16, 10))
-    plt.subplot(211)
+    plt.figure(figsize = (16, 15))
+    plt.subplot(311)
     plt.semilogy(f, psd_O1_han, label="O1")
     plt.semilogy(f, psd_O2_han, label="O2")
     plt.grid()
-    #plt.xlabel("Frequency, $\omega$")
-    plt.ylabel("Voltage, $\mu V^2 / Hz$")
-    plt.title("Welch Power Spectral Density of Occipital Electrodes Using a Window of "+str(nperseg)+" Samples")
+    #plt.ylabel("Voltage, $\mu V^2 / Hz$")
+    plt.title("Power Spectral Density Using a Hanning Window of "+str(nperseg)+" Samples")
     plt.legend()
-    #plt.savefig("O2_O1_PSD_plot.png")
-    #plt.show()
     
-    plt.subplot(212)
+    plt.subplot(312)
     plt.semilogy(f2, psd_O1_ham, label="O1")
     plt.semilogy(f2, psd_O2_ham, label="O2")
     plt.grid()
-    plt.xlabel("Frequency, $\omega$")
+    plt.title("Power Spectral Density Using a Hamming Window of "+str(nperseg)+" Samples")
     plt.ylabel("Voltage, $\mu V^2 / Hz$")
+    plt.legend()
+    plt.savefig("O2_O1_PSD_plot.png")
+    
+    plt.subplot(313)
+    plt.semilogy(f2, psd_O1_bar, label="O1")
+    plt.semilogy(f2, psd_O2_bar, label="O2")
+    plt.grid()
+    plt.title("Power Spectral Density Using a Bartlett Window of "+str(nperseg)+" Samples")
+    plt.xlabel("Frequency, $\omega$")
+    #plt.ylabel("Voltage, $\mu V^2 / Hz$")
     plt.legend()
     plt.savefig("O2_O1_PSD_plot.png")
     plt.show()
@@ -308,7 +319,7 @@ def plot_window(nperseg, N):
     plt.show()
 
 
-def plot_amp_spec(sig_dat1, sig_dat2, N):
+def plot_amp_spec(sig_dat1, sig_dat2, N1, N2):
     """
     Plots the amplitude spectra of two signals using the absolute
     value of the fft as per the numpy docs.
@@ -318,39 +329,42 @@ def plot_amp_spec(sig_dat1, sig_dat2, N):
         corresponding to the peak amplitude
     """
     
-    plt.figure(figsize=(16, 6))
-
-    A=np.fft.fft(sig_dat1, N)
-    amp1=np.abs(A)                      # calc amplitude
-    
+    amp1=np.abs(np.fft.fft(sig_dat1, N))    
     freq=np.fft.fftfreq(N, 1./256.)     # find frequency range for x
         
-    B=np.fft.fft(sig_dat2, N)
-    amp2=np.abs(B)                      # calc amplitude
-    
+    amp2=np.abs(np.fft.fft(sig_dat2, N))    
     upper=int(N/2)
     
+    amp1N2=np.abs(np.fft.fft(sig_dat1, N2))    
+    freq2=np.fft.fftfreq(N2, 1./256.)     # find frequency range for x
+        
+    amp2N2=np.abs(np.fft.fft(sig_dat2, N2))    
+    upper2=int(N2/2)
+    
+    plt.figure(figsize=(16,5))  
     plt.semilogy(freq[1:upper], amp1[1:upper])
     plt.semilogy(freq[1:upper], amp2[1:upper])
     plt.grid()
-    plt.xlabel("Normalized Frequency")
+    plt.xlabel("Frequency, $\omega$")
     plt.ylabel("Amplitude")
+    plt.title("Amplitude Spectrum of Occipital ECGs")    
+    plt.savefig("ampspec.png")
+    plt.show()
+
     
     peak_f1=freq[list(amp1).index(np.max(amp1[1:upper]))]
     peak_f2=freq[list(amp2).index(np.max(amp2[1:upper]))]
-    
-    plt.show()
     
     return (peak_f1, peak_f2)
 
 
 def main():
 #    xf[0:int(fs)]=np.nan # set first second of data to (nan) - avoid start-up transients
-    O1, O2, fs, t = getData(FILENAME, CATEGORY)
+    O1,O2,fs,t= getData(FILENAME, CATEGORY)
     O1, O2 = rm_mean(O1, O2)
 #    b,a=butter_band(8,13,fs)
 #    O1_filt,O2_filt=apply_filter(b,a,t,O1,O2)
-    plot_psd(O1, O2, fs)
+    plot_amp_spec(O1,O2,124, 256)
 
 if __name__ == "__main__":
     main()
